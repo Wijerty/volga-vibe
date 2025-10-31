@@ -24,6 +24,7 @@ Thumbs.db
 
 # Logs
 *.log
+.env
 
 # Flask
 instance/
