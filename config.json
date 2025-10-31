@@ -1,0 +1,33 @@
+{
+  "app_name": "Volga Vibes",
+  "privacy_policy_url": "https://example.com/privacy-policy",
+  "support_email": "support@volgavibes.ru",
+  "api": {
+    "chutes_base_url": "https://llm.chutes.ai/v1",
+    "model": "deepseek-ai/DeepSeek-V3.1"
+  },
+  "map": {
+    "default_center": [56.3287, 44.0020],
+    "default_zoom": 13,
+    "tile_layer": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+  },
+  "walk_settings": {
+    "duration": {
+      "min": 1,
+      "max": 10,
+      "default": 3
+    },
+    "radius": {
+      "min": 1,
+      "max": 10,
+      "default": 3
+    },
+    "places_count": {
+      "min": 3,
+      "max": 5,
+      "default": 3
+    }
+  }
+}
+

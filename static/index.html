@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volga Vibes - Прогулки по Нижнему Новгороду</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    
+    <!-- Наши стили -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Экран 1: Приветствие -->
+        <div id="screen-welcome" class="screen active">
+            <div class="screen-content">
+                <div class="logo-container">
+                    <h1 class="app-title">Volga Vibes</h1>
+                    <p class="app-subtitle">Откройте для себя Нижний Новгород</p>
+                </div>
+                
+                <div class="welcome-message">
+                    <p>Добро пожаловать в приложение для создания персонализированных прогулочных маршрутов!</p>
+                    <p>Мы поможем вам найти интересные места, которые соответствуют вашим предпочтениям.</p>
+                </div>
+                
+                <button class="btn btn-primary" onclick="goToScreen('screen-intro')">Продолжить</button>
+                
+                <div class="footer-links">
+                    <a href="#" id="privacy-link" target="_blank">Политика конфиденциальности</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран 2: Знакомство -->
+        <div id="screen-intro" class="screen">
+            <div class="screen-content">
+                <h2>Давайте познакомимся</h2>
+                <p class="screen-description">Расскажите немного о себе</p>
+                
+                <form id="intro-form" class="form">
+                    <div class="form-group">
+                        <label for="user-name">Ваше имя</label>
+                        <input type="text" id="user-name" class="form-input" placeholder="Введите ваше имя" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="user-age">Ваш возраст</label>
+                        <input type="number" id="user-age" class="form-input" placeholder="Введите ваш возраст" min="1" max="120" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" disabled id="intro-next-btn">Продолжить</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Экран 3: Интересы -->
+        <div id="screen-interests" class="screen">
+            <div class="screen-content">
+                <h2>Расскажите о своих интересах</h2>
+                <p class="screen-description">Опишите в свободной форме, что вам нравится</p>
+                
+                <form id="interests-form" class="form">
+                    <div class="form-group">
+                        <label for="user-interests">Ваши интересы</label>
+                        <textarea 
+                            id="user-interests" 
+                            class="form-textarea" 
+                            rows="6"
+                            placeholder="Например: Мне нравится вселенная Гарри Поттера и выпить пиво, также люблю культурные места и историю..."
+                            required
+                        ></textarea>
+                        <div class="char-counter">
+                            <span id="char-count">0</span> / 500 символов
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" disabled id="interests-next-btn">Продолжить</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Экран 4: Настройки прогулки -->
+        <div id="screen-settings" class="screen">
+            <div class="screen-content">
+                <h2>Настройки прогулки</h2>
+                <p class="screen-description">Определим параметры вашего маршрута</p>
+                
+                <div id="location-status" class="location-status">
+                    <span class="loader"></span>
+                    <span>Получаем ваше местоположение...</span>
+                </div>
+                
+                <form id="settings-form" class="form">
+                    <div class="form-group">
+                        <label for="duration-slider">
+                            Время прогулки: <span id="duration-value">3</span> ч
+                        </label>
+                        <input 
+                            type="range" 
+                            id="duration-slider" 
+                            class="slider" 
+                            min="1" 
+                            max="10" 
+                            value="3"
+                            step="1"
+                        >
+                        <div class="slider-labels">
+                            <span>1 ч</span>
+                            <span>10 ч</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="return-checkbox">
+                            <span>Вернуться в начальную точку</span>
+                        </label>
+                        <p class="help-text">Маршрут будет построен с учетом возврата к месту старта</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="radius-slider">
+                            Радиус прогулки: <span id="radius-value">3</span> км
+                        </label>
+                        <input 
+                            type="range" 
+                            id="radius-slider" 
+                            class="slider" 
+                            min="1" 
+                            max="10" 
+                            value="3"
+                            step="0.5"
+                        >
+                        <div class="slider-labels">
+                            <span>1 км</span>
+                            <span>10 км</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="places-select">Количество мест для посещения</label>
+                        <select id="places-select" class="form-select">
+                            <option value="3">3 места</option>
+                            <option value="4">4 места</option>
+                            <option value="5">5 мест</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="start-walk-btn">Пошли гулять!</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Экран 5: Карта с маршрутом -->
+        <div id="screen-map" class="screen">
+            <div class="map-container">
+                <div id="map"></div>
+                
+                <div class="route-panel">
+                    <div class="route-header">
+                        <h3>Ваш маршрут</h3>
+                        <button class="btn-icon" onclick="toggleRoutePanel()">
+                            <span id="panel-toggle-icon">▼</span>
+                        </button>
+                    </div>
+                    
+                    <div class="route-info" id="route-info">
+                        <div class="route-stats">
+                            <div class="stat">
+                                <span class="stat-label">Расстояние:</span>
+                                <span class="stat-value" id="total-distance">-</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Примерное время:</span>
+                                <span class="stat-value" id="total-time">-</span>
+                            </div>
+                        </div>
+                        
+                        <div id="places-list" class="places-list">
+                            <!-- Места будут добавлены динамически -->
+                        </div>
+                    </div>
+                    
+                    <div class="route-actions">
+                        <button class="btn btn-secondary" onclick="startNewRoute()">Новый маршрут</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>Создаем идеальный маршрут для вас...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <!-- Наш скрипт -->
+    <script src="/js/app.js"></script>
+</body>
+</html>
+
