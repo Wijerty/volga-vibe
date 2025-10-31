@@ -25,7 +25,7 @@
     },
     "places_count": {
       "min": 3,
-      "max": 5,
+      "max": 8,
       "default": 3
     }
   }

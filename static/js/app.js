@@ -20,6 +20,63 @@ let map = null;
 let markers = [];
 let routeLine = null;
 
+// Глобальная функция для расчета рекомендуемого количества мест
+function calculateRecommendedPlaces(duration) {
+    // Логика: ~1.5 часа на место (30 мин осмотр + 1 час на переход/прогулку)
+    // Минимум 3 места, максимум 8
+    const recommended = Math.max(3, Math.min(8, Math.round(duration / 1.5)));
+    return recommended;
+}
+
+// Склонение слова "место"
+function getPlacesWord(count) {
+    const cases = [2, 0, 1, 1, 1, 2];
+    const titles = ['место', 'места', 'мест'];
+    return titles[(count % 100 > 4 && count % 100 < 20) ? 2 : cases[Math.min(count % 10, 5)]];
+}
+
+// Глобальная функция для обновления рекомендации
+function updatePlacesRecommendation() {
+    const durationSlider = document.getElementById('duration-slider');
+    const placesSelect = document.getElementById('places-select');
+    const recommendationDiv = document.getElementById('places-recommendation');
+    const recommendationText = document.getElementById('recommendation-text');
+    
+    if (!durationSlider || !placesSelect || !recommendationDiv) return;
+    
+    const duration = parseInt(durationSlider.value);
+    const selectedPlaces = parseInt(placesSelect.value);
+    const recommended = calculateRecommendedPlaces(duration);
+    
+    // Убираем все классы стилей
+    recommendationDiv.classList.remove('warning', 'optimal');
+    
+    if (selectedPlaces === recommended) {
+        // Оптимальное количество
+        recommendationDiv.classList.add('optimal');
+        recommendationText.textContent = `Отлично! Это оптимальное количество мест для ${duration} ч прогулки.`;
+        recommendationDiv.style.display = 'flex';
+    } else if (Math.abs(selectedPlaces - recommended) === 1) {
+        // Близко к оптимальному
+        recommendationDiv.classList.add('optimal');
+        recommendationText.textContent = `Хороший выбор для ${duration} ч прогулки.`;
+        recommendationDiv.style.display = 'flex';
+    } else if (selectedPlaces < recommended - 1) {
+        // Слишком мало мест
+        recommendationDiv.classList.add('warning');
+        recommendationText.textContent = `Для ${duration} ч прогулки рекомендуем ${recommended} ${getPlacesWord(recommended)}. У вас будет много свободного времени.`;
+        recommendationDiv.style.display = 'flex';
+    } else if (selectedPlaces > recommended + 1) {
+        // Слишком много мест
+        recommendationDiv.classList.add('warning');
+        recommendationText.textContent = `Для ${duration} ч прогулки рекомендуем ${recommended} ${getPlacesWord(recommended)}. Прогулка может получиться насыщенной.`;
+        recommendationDiv.style.display = 'flex';
+    } else {
+        // Скрываем если разница небольшая
+        recommendationDiv.style.display = 'none';
+    }
+}
+
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', async () => {
     await loadConfig();
@@ -103,6 +160,7 @@ function initializeEventListeners() {
     durationSlider.addEventListener('input', () => {
         userData.duration = parseInt(durationSlider.value);
         durationValue.textContent = userData.duration;
+        updatePlacesRecommendation();
     });
     
     radiusSlider.addEventListener('input', () => {
@@ -112,6 +170,7 @@ function initializeEventListeners() {
     
     placesSelect.addEventListener('change', () => {
         userData.placesCount = parseInt(placesSelect.value);
+        updatePlacesRecommendation();
     });
     
     returnCheckbox.addEventListener('change', () => {
@@ -136,6 +195,16 @@ function goToScreen(screenId) {
         // Инициализируем карту при переходе на экран карты
         if (screenId === 'screen-map' && !map) {
             initMap();
+        }
+        
+        // Обновляем рекомендацию при переходе на экран настроек
+        if (screenId === 'screen-settings') {
+            // Даем время на рендер, затем обновляем рекомендацию
+            setTimeout(() => {
+                if (typeof updatePlacesRecommendation === 'function') {
+                    updatePlacesRecommendation();
+                }
+            }, 100);
         }
     }
 }
@@ -177,10 +246,12 @@ function getUserLocation() {
 function initMap() {
     if (map) return;
     
-    map = L.map('map').setView(config.map.default_center, config.map.default_zoom);
+    map = L.map('map', {
+        attributionControl: false  // Отключаем контрол атрибуции
+    }).setView(config.map.default_center, config.map.default_zoom);
     
     L.tileLayer(config.map.tile_layer, {
-        attribution: config.map.attribution,
+        attribution: '',
         maxZoom: 19
     }).addTo(map);
 }
@@ -191,12 +262,27 @@ async function generateRoute() {
     showLoading(true);
     
     try {
+        // Подготавливаем данные для отправки с правильными именами ключей для backend
+        const requestData = {
+            name: userData.name,
+            age: userData.age,
+            interests: userData.interests,
+            latitude: userData.latitude,
+            longitude: userData.longitude,
+            duration: userData.duration,
+            radius: userData.radius,
+            places_count: userData.placesCount,  // Backend ожидает places_count (с подчеркиванием)
+            return_to_start: userData.returnToStart  // Backend ожидает return_to_start
+        };
+        
+        console.log('Sending request:', requestData);  // Для отладки
+        
         const response = await fetch('/api/generate-route', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(userData)
+            body: JSON.stringify(requestData)
         });
         
         if (!response.ok) {

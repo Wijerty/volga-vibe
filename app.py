@@ -207,7 +207,7 @@ def generate_route():
   "selected_places": [
     {{
       "place_name": "ТОЧНОЕ название места из списка выше (скопируй как есть)",
-      "reason": "короткое объяснение на русском (2-3 предложения), почему это место подходит {user_name} с учетом интересов: {interests}"
+      "reason": "короткое объяснение на русском (2-3 предложения), почему ВАМ стоит посетить это место с учетом ваших интересов. Обращайся к пользователю напрямую на 'вы'."
     }},
     ... всего {places_count} мест
   ]
@@ -218,7 +218,8 @@ def generate_route():
 - Если в списке меньше {places_count} мест - выбери все доступные
 - КОПИРУЙ названия мест ТОЧНО как в списке (после "Место N:")
 - НЕ изменяй названия, НЕ добавляй "г. Нижний Новгород" и другие префиксы
-- Объяснение должно быть персонализированным
+- В объяснении обращайся к пользователю НАПРЯМУЮ на "вы" (например: "Вам понравится", "Вы сможете", "Для вас это будет интересно")
+- НЕ используй третье лицо (не пиши "{user_name}", "этому пользователю", "ему/ей")
 - Верни ТОЛЬКО JSON, без markdown разметки и комментариев
 - В массиве selected_places должно быть РОВНО {places_count} элементов
 """
@@ -263,43 +264,44 @@ def generate_route():
         
         # Находим выбранные места (с гибким поиском)
         selected_places = []
+        used_ai_names = set()  # Отслеживаем использованные названия от AI
+        
         for place in nearby_places:
             # Ищем точное совпадение или частичное
             for ai_place_name, reason in selected_place_names.items():
+                if ai_place_name in used_ai_names:
+                    continue  # Это название уже использовано
+                    
                 if (place['name'] == ai_place_name or 
                     ai_place_name in place['name'] or 
                     place['name'] in ai_place_name):
                     if place not in selected_places:  # Избегаем дублей
-                        place['ai_reason'] = reason
-                        selected_places.append(place)
+                        place_copy = place.copy()  # Создаем копию чтобы не модифицировать оригинал
+                        place_copy['ai_reason'] = reason
+                        selected_places.append(place_copy)
+                        used_ai_names.add(ai_place_name)
                         print(f"Matched: {place['name']} with {ai_place_name}")  # Отладка
                         break
+            
+            if len(selected_places) >= places_count:
+                break
         
-        print(f"Совпадений найдено: {len(selected_places)} из {len(nearby_places)} доступных")  # Отладка
+        print(f"Совпадений найдено: {len(selected_places)} из {len(selected_place_names)} запрошенных AI")  # Отладка
         
-        # Если не нашли достаточно мест через AI, берем из оставшихся разнообразных мест
+        # Если не нашли достаточно мест через AI, берем из оставшихся мест БЕЗ дополнительной проверки расстояния
+        # (т.к. nearby_places уже прошли фильтр разнообразия)
         if len(selected_places) < places_count:
             print(f"Warning: AI выбрал только {len(selected_places)} мест, добавляем недостающие...")
             added = 0
             for place in nearby_places:
-                if place not in selected_places:
-                    # Проверяем что место достаточно далеко от уже выбранных
-                    is_diverse = True
-                    for selected in selected_places:
-                        distance = calculate_distance(
-                            place['lat'], place['lon'],
-                            selected['lat'], selected['lon']
-                        )
-                        if distance < 0.3:  # 300 метров
-                            is_diverse = False
-                            break
+                # Проверяем что это место еще не добавлено
+                if not any(p['name'] == place['name'] for p in selected_places):
+                    place_copy = place.copy()
+                    place_copy['ai_reason'] = f"Это место находится рядом с вами и может быть интересно для посещения."
+                    selected_places.append(place_copy)
+                    added += 1
+                    print(f"  Добавлено: {place['name']} ({place['distance_from_user']:.2f} км от вас)")
                     
-                    if is_diverse:
-                        place['ai_reason'] = f"Это место находится рядом с вами и может быть интересно для посещения."
-                        selected_places.append(place)
-                        added += 1
-                        print(f"  Добавлено: {place['name']} ({place['distance_from_user']:.2f} км от вас)")
-                        
                     if len(selected_places) >= places_count:
                         break
             
